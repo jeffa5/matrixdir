@@ -3,12 +3,15 @@ use std::path::PathBuf;
 pub fn main() {
     let dir = PathBuf::from("matrixdir");
     let mut matrixdir = matrixdir::matrixdir::MatrixDir::new_writer(dir.clone()).unwrap();
+    let pid = std::process::id();
     for i in 0..5 {
         let now = std::time::SystemTime::UNIX_EPOCH
             .elapsed()
             .unwrap()
             .as_millis();
-        matrixdir.write_event(&format!("{i}\n"), now).unwrap();
+        matrixdir
+            .write_event(&format!("{now}: ({pid}) {i}\n"), now)
+            .unwrap();
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
@@ -21,5 +24,8 @@ pub fn main() {
             "found room {:?} with {} messages in {} message files",
             room_name, message_count, message_files
         );
+        for message in room.messages() {
+            println!("{room_name:?}: {message}");
+        }
     }
 }

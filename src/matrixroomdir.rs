@@ -72,17 +72,17 @@ impl MatrixRoomDir<crate::read_write::Read> {
         for entry in self.path.read_dir()? {
             let entry = entry?;
             if entry.path().is_file() {
-                let file_name = entry
-                    .path()
-                    .file_stem()
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned();
-                let filename_timestamp: u128 = file_name.parse().unwrap();
-                let matrix_file = MatrixFile::new_reader(entry.path())?;
-                self.files.insert(filename_timestamp, matrix_file);
+                self.add_file(entry.path())?;
             }
         }
+        Ok(())
+    }
+
+    pub fn add_file(&mut self, path: PathBuf) -> std::io::Result<()> {
+        let file_name = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let filename_timestamp: u128 = file_name.parse().unwrap();
+        let matrix_file = MatrixFile::new_reader(path)?;
+        self.files.insert(filename_timestamp, matrix_file);
         Ok(())
     }
 }
@@ -96,7 +96,7 @@ impl<RW: ReaderWriter> MatrixRoomDir<RW> {
             .into_owned()
     }
 
-    pub fn messages(&self) -> MessageIterator {
+    pub fn messages(&self, follow: bool) -> MessageIterator {
         // iterate over each events file yielding the messages line by line
         MessageIterator {
             files: self
@@ -106,6 +106,7 @@ impl<RW: ReaderWriter> MatrixRoomDir<RW> {
                 .collect(),
             current_file: None,
             closed: false,
+            follow,
         }
     }
 
@@ -119,10 +120,11 @@ pub struct MessageIterator {
     files: BTreeMap<u128, MatrixFile<crate::read_write::Read>>,
     current_file: Option<(u128, crate::matrixfile::MessageIterator)>,
     closed: bool,
+    follow: bool,
 }
 
 impl Iterator for MessageIterator {
-    type Item = String;
+    type Item = Option<String>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.closed {
@@ -138,7 +140,7 @@ impl Iterator for MessageIterator {
                     .range((Bound::Excluded(*current_ts), Bound::Unbounded))
                     .next();
                 if let Some(next_file) = next_file {
-                    self.current_file = Some((*next_file.0, next_file.1.messages()));
+                    self.current_file = Some((*next_file.0, next_file.1.messages(self.follow)));
                     self.next()
                 } else {
                     self.current_file = None;
@@ -149,7 +151,7 @@ impl Iterator for MessageIterator {
         } else {
             let next_file = self.files.iter().next();
             if let Some(next_file) = next_file {
-                self.current_file = Some((*next_file.0, next_file.1.messages()));
+                self.current_file = Some((*next_file.0, next_file.1.messages(self.follow)));
                 self.next()
             } else {
                 None

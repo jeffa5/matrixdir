@@ -1,7 +1,7 @@
-use std::collections::VecDeque;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::Read as _;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::io::Write;
 use std::marker::PhantomData;
 use std::path::Path;
@@ -30,11 +30,12 @@ impl MatrixFile<crate::read_write::Read> {
         OpenOptions::new().read(true).open(&path)
     }
 
-    pub fn messages(&self) -> MessageIterator {
+    pub fn messages(&self, follow: bool) -> MessageIterator {
+        let file = Self::open_file(&self.path).unwrap();
         MessageIterator {
-            file: Self::open_file(&self.path).unwrap(),
+            bufreader: BufReader::new(file),
             closed: false,
-            big_buf: VecDeque::new(),
+            follow,
         }
     }
 }
@@ -68,42 +69,39 @@ impl Write for MatrixFile<crate::read_write::Write> {
 
 #[derive(Debug)]
 pub struct MessageIterator {
-    file: File,
+    bufreader: BufReader<File>,
     closed: bool,
-    big_buf: VecDeque<u8>,
+    follow: bool,
 }
 
 impl Iterator for MessageIterator {
-    type Item = String;
+    type Item = Option<String>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.closed {
             return None;
         }
 
-        let mut buf = vec![0; 1024];
-        loop {
-            let read = self.file.read(&mut buf);
-            if read.is_err() {
-                self.closed = true;
-                return None;
+        let mut buf = Vec::new();
+        let read_result = self.bufreader.read_until(b'\n', &mut buf);
+        match read_result {
+            Ok(0) => {
+                if self.follow {
+                    Some(None)
+                } else {
+                    self.closed = true;
+                    None
+                }
             }
-
-            let read = read.unwrap();
-
-            self.big_buf.extend(&buf[..read]);
-            if let Some(pos) = self.big_buf.iter().position(|b| *b == b'\n') {
-                let rest = self.big_buf.split_off(pos);
-                let line = String::from_utf8(self.big_buf.make_contiguous().to_vec()).unwrap();
-                self.big_buf = rest;
-                // remove the newline
-                self.big_buf.pop_front();
-                return Some(line);
+            Ok(_) => {
+                // remove the '\n'
+                buf.pop();
+                let line = String::from_utf8(buf).unwrap();
+                return Some(Some(line));
             }
-
-            if read == 0 && self.big_buf.is_empty() {
+            Err(_) => {
                 self.closed = true;
-                return None;
+                None
             }
         }
     }

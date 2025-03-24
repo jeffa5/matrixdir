@@ -15,9 +15,16 @@ impl MatrixRoomDir<crate::read_write::Write> {
         if !path.exists() {
             std::fs::create_dir(&path)?;
         }
+        let mut s = Self {
+            path,
+            files: BTreeMap::new(),
+        };
+        s.reload_files()?;
+        Ok(s)
+    }
 
-        let mut files = BTreeMap::new();
-        for entry in path.read_dir()? {
+    pub fn reload_files(&mut self) -> std::io::Result<()> {
+        for entry in self.path.read_dir()? {
             let entry = entry?;
             if entry.path().is_file() {
                 let file_name = entry
@@ -28,10 +35,10 @@ impl MatrixRoomDir<crate::read_write::Write> {
                     .into_owned();
                 let filename_timestamp: u128 = file_name.parse().unwrap();
                 let matrix_file = MatrixFile::new_writer(entry.path())?;
-                files.insert(filename_timestamp, matrix_file);
+                self.files.insert(filename_timestamp, matrix_file);
             }
         }
-        Ok(Self { path, files })
+        Ok(())
     }
 
     pub fn write_event(&mut self, event: &str, timestamp: u128) -> std::io::Result<()> {
@@ -53,9 +60,16 @@ impl MatrixRoomDir<crate::read_write::Read> {
         if !path.exists() {
             std::fs::create_dir(&path)?;
         }
+        let mut s = Self {
+            path,
+            files: BTreeMap::new(),
+        };
+        s.reload_files()?;
+        Ok(s)
+    }
 
-        let mut files = BTreeMap::new();
-        for entry in path.read_dir()? {
+    pub fn reload_files(&mut self) -> std::io::Result<()> {
+        for entry in self.path.read_dir()? {
             let entry = entry?;
             if entry.path().is_file() {
                 let file_name = entry
@@ -66,10 +80,10 @@ impl MatrixRoomDir<crate::read_write::Read> {
                     .into_owned();
                 let filename_timestamp: u128 = file_name.parse().unwrap();
                 let matrix_file = MatrixFile::new_reader(entry.path())?;
-                files.insert(filename_timestamp, matrix_file);
+                self.files.insert(filename_timestamp, matrix_file);
             }
         }
-        Ok(Self { path, files })
+        Ok(())
     }
 }
 

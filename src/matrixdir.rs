@@ -1,5 +1,6 @@
 use crate::lockfile::LockFile;
 use crate::matrixroomdir::MatrixRoomDir;
+use crate::read_write::ReaderWriter;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -22,18 +23,13 @@ impl MatrixDir<crate::read_write::Write> {
             let entry = entry?;
             if entry.path().is_dir() {
                 let room = MatrixRoomDir::new_writer(entry.path())?;
-                let room_name = entry
-                    .path()
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned();
+                let room_name = room.name();
                 rooms.insert(room_name, room);
             }
         }
         Ok(Self {
             path,
-            _lockfile:Some(lockfile),
+            _lockfile: Some(lockfile),
             rooms,
         })
     }
@@ -49,3 +45,31 @@ impl MatrixDir<crate::read_write::Write> {
     }
 }
 
+impl MatrixDir<crate::read_write::Read> {
+    pub fn new_reader(path: PathBuf) -> std::io::Result<Self> {
+        if !path.exists() {
+            std::fs::create_dir(&path)?;
+        }
+
+        let mut rooms = BTreeMap::new();
+        for entry in path.read_dir()? {
+            let entry = entry?;
+            if entry.path().is_dir() {
+                let room = MatrixRoomDir::new_reader(entry.path())?;
+                let room_name = room.name();
+                rooms.insert(room_name, room);
+            }
+        }
+        Ok(Self {
+            path,
+            _lockfile: None,
+            rooms,
+        })
+    }
+}
+
+impl<RW: ReaderWriter> MatrixDir<RW> {
+    pub fn rooms(&self) -> Vec<&MatrixRoomDir<RW>> {
+        self.rooms.values().collect()
+    }
+}

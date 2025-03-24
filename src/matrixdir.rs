@@ -18,20 +18,26 @@ impl MatrixDir<crate::read_write::Write> {
         }
 
         let lockfile = LockFile::try_create(path.join("lock.pid"))?;
-        let mut rooms = BTreeMap::new();
-        for entry in path.read_dir()? {
+        let mut s = Self {
+            path,
+            _lockfile: Some(lockfile),
+            rooms: BTreeMap::new(),
+        };
+        s.reload_rooms()?;
+
+        Ok(s)
+    }
+
+    pub fn reload_rooms(&mut self) -> std::io::Result<()> {
+        for entry in self.path.read_dir()? {
             let entry = entry?;
             if entry.path().is_dir() {
                 let room = MatrixRoomDir::new_writer(entry.path())?;
                 let room_name = room.name();
-                rooms.insert(room_name, room);
+                self.rooms.insert(room_name, room);
             }
         }
-        Ok(Self {
-            path,
-            _lockfile: Some(lockfile),
-            rooms,
-        })
+        Ok(())
     }
 
     pub fn write_event(
@@ -50,25 +56,30 @@ impl MatrixDir<crate::read_write::Write> {
 }
 
 impl MatrixDir<crate::read_write::Read> {
+    pub fn reload_rooms(&mut self) -> std::io::Result<()> {
+        for entry in self.path.read_dir()? {
+            let entry = entry?;
+            if entry.path().is_dir() {
+                let room = MatrixRoomDir::new_reader(entry.path())?;
+                let room_name = room.name();
+                self.rooms.insert(room_name, room);
+            }
+        }
+        Ok(())
+    }
+
     pub fn new_reader(path: PathBuf) -> std::io::Result<Self> {
         if !path.exists() {
             std::fs::create_dir(&path)?;
         }
 
-        let mut rooms = BTreeMap::new();
-        for entry in path.read_dir()? {
-            let entry = entry?;
-            if entry.path().is_dir() {
-                let room = MatrixRoomDir::new_reader(entry.path())?;
-                let room_name = room.name();
-                rooms.insert(room_name, room);
-            }
-        }
-        Ok(Self {
+        let mut s = Self {
             path,
             _lockfile: None,
-            rooms,
-        })
+            rooms: BTreeMap::new(),
+        };
+        s.reload_rooms()?;
+        Ok(s)
     }
 }
 

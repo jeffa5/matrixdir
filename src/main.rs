@@ -4,13 +4,14 @@ pub fn main() {
     let dir = PathBuf::from("matrixdir");
     let mut matrixdir = matrixdir::matrixdir::MatrixDir::new_writer(dir.clone()).unwrap();
     let pid = std::process::id();
+    let room_name = "default2".to_owned();
     for i in 0..5 {
         let now = std::time::SystemTime::UNIX_EPOCH
             .elapsed()
             .unwrap()
             .as_millis();
         matrixdir
-            .write_event(&format!("{now}: ({pid}) {i}\n"), now)
+            .write_event(&format!("{now}: ({pid}) {i}\n"), room_name.clone(), now)
             .unwrap();
         std::thread::sleep(std::time::Duration::from_millis(100));
     }

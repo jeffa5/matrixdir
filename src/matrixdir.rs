@@ -34,8 +34,12 @@ impl MatrixDir<crate::read_write::Write> {
         })
     }
 
-    pub fn write_event(&mut self, event: &str, timestamp: u128) -> std::io::Result<()> {
-        let room_name = "default".to_owned();
+    pub fn write_event(
+        &mut self,
+        event: &str,
+        room_name: String,
+        timestamp: u128,
+    ) -> std::io::Result<()> {
         // TODO: extract room from event and use that for rooms lookup
         let room = self
             .rooms

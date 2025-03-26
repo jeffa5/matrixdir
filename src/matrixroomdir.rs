@@ -96,9 +96,9 @@ impl<RW: ReaderWriter> MatrixRoomDir<RW> {
             .into_owned()
     }
 
-    pub fn messages(&self, follow: bool) -> MessageIterator {
+    pub fn messages(&self, follow: bool) -> RoomMessageIterator {
         // iterate over each events file yielding the messages line by line
-        MessageIterator {
+        RoomMessageIterator {
             files: self
                 .files
                 .iter()
@@ -116,14 +116,14 @@ impl<RW: ReaderWriter> MatrixRoomDir<RW> {
 }
 
 #[derive(Debug)]
-pub struct MessageIterator {
+pub struct RoomMessageIterator {
     files: BTreeMap<u128, MatrixFile<crate::read_write::Read>>,
-    current_file: Option<(u128, crate::matrixfile::MessageIterator)>,
+    current_file: Option<(u128, crate::matrixfile::FileMessageIterator)>,
     closed: bool,
     follow: bool,
 }
 
-impl Iterator for MessageIterator {
+impl Iterator for RoomMessageIterator {
     type Item = Option<String>;
 
     fn next(&mut self) -> Option<Self::Item> {

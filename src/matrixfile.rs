@@ -30,9 +30,9 @@ impl MatrixFile<crate::read_write::Read> {
         OpenOptions::new().read(true).open(&path)
     }
 
-    pub fn messages(&self, follow: bool) -> MessageIterator {
+    pub fn messages(&self, follow: bool) -> FileMessageIterator {
         let file = Self::open_file(&self.path).unwrap();
-        MessageIterator {
+        FileMessageIterator {
             bufreader: BufReader::new(file),
             closed: false,
             follow,
@@ -68,13 +68,13 @@ impl Write for MatrixFile<crate::read_write::Write> {
 }
 
 #[derive(Debug)]
-pub struct MessageIterator {
+pub struct FileMessageIterator {
     bufreader: BufReader<File>,
     closed: bool,
     follow: bool,
 }
 
-impl Iterator for MessageIterator {
+impl Iterator for FileMessageIterator {
     type Item = Option<String>;
 
     fn next(&mut self) -> Option<Self::Item> {

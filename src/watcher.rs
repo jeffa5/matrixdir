@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use notify::{EventHandler, EventKind};
 
-use crate::{matrixdir::MatrixDir, matrixfile::MessageIterator, MatrixFile, MatrixRoomDir};
+use crate::{matrixdir::MatrixDir, matrixfile::FileMessageIterator, MatrixFile, MatrixRoomDir};
 
 pub trait MatrixEventHandler {
     fn handle(&mut self, event: String);
@@ -19,7 +19,7 @@ where
 
 pub struct MatrixDirWatcher<H> {
     root: PathBuf,
-    file_followers: BTreeMap<PathBuf, MessageIterator>,
+    file_followers: BTreeMap<PathBuf, FileMessageIterator>,
     event_handler: H,
 }
 
@@ -86,7 +86,7 @@ impl<H: MatrixEventHandler> MatrixDirWatcher<H> {
 }
 
 pub fn emit_events_from_follower<H: MatrixEventHandler>(
-    follower: &mut MessageIterator,
+    follower: &mut FileMessageIterator,
     handler: &mut H,
 ) {
     while let Some(Some(event)) = follower.next() {

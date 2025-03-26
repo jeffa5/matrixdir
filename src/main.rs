@@ -5,16 +5,16 @@ use notify::Watcher as _;
 pub fn main() {
     let dir = PathBuf::from("matrixdir");
 
-    let mut watcher = notify::recommended_watcher(matrixdir::watcher::MatrixDirWatcher::new(
-        dir.clone(),
-        |event| eprintln!("{:?}", event),
-    ))
-    .unwrap();
+    let mut watcher =
+        notify::recommended_watcher(matrixdir::MatrixDirWatcher::new(dir.clone(), |event| {
+            eprintln!("{:?}", event)
+        }))
+        .unwrap();
     watcher
         .watch(&dir, notify::RecursiveMode::Recursive)
         .unwrap();
 
-    let mut matrixdir = matrixdir::matrixdir::MatrixDir::new_writer(dir.clone()).unwrap();
+    let mut matrixdir = matrixdir::MatrixDir::new_writer(dir.clone()).unwrap();
     let pid = std::process::id();
     let room_name = "default2".to_owned();
     for i in 0..5 {
@@ -28,7 +28,7 @@ pub fn main() {
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
 
-    let matrixdir_reader = matrixdir::matrixdir::MatrixDir::new_reader(dir.clone()).unwrap();
+    let matrixdir_reader = matrixdir::MatrixDir::new_reader(dir.clone()).unwrap();
     for room in matrixdir_reader.rooms() {
         let room_name = room.name();
         let message_count = room.messages(false).count();

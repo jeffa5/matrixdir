@@ -1,15 +1,16 @@
-use std::path::PathBuf;
+use std::{fs::create_dir_all, path::PathBuf};
 
 use notify::Watcher as _;
 
 pub fn main() {
     let dir = PathBuf::from("matrixdir");
 
-    let mut watcher =
-        notify::recommended_watcher(matrixdir::MatrixDirWatcher::new(dir.clone(), |event| {
-            eprintln!("{:?}", event)
-        }))
-        .unwrap();
+    create_dir_all(&dir).unwrap();
+
+    let mdirwatcher =
+        matrixdir::MatrixDirWatcher::new(dir.clone(), |event| eprintln!("{:?}", event)).unwrap();
+
+    let mut watcher = notify::recommended_watcher(mdirwatcher).unwrap();
     watcher
         .watch(&dir, notify::RecursiveMode::Recursive)
         .unwrap();

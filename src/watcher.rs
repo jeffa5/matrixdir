@@ -24,23 +24,23 @@ pub struct MatrixDirWatcher<H> {
 }
 
 impl<H: MatrixEventHandler> MatrixDirWatcher<H> {
-    pub fn new(root: PathBuf, mut event_handler: H) -> Self {
-        let abs_root = root.canonicalize().unwrap();
-        let matrixdir = MatrixDir::new_reader(root).unwrap();
+    pub fn new(root: PathBuf, mut event_handler: H) -> std::io::Result<Self> {
+        let abs_root = root.canonicalize()?;
+        let matrixdir = MatrixDir::new_reader(root)?;
         let mut file_followers = BTreeMap::new();
         for room in matrixdir.rooms() {
             for file in room.message_files() {
                 let mut follower = file.messages(true);
                 emit_events_from_follower(&mut follower, &mut event_handler);
-                let path = file.path.canonicalize().unwrap();
+                let path = file.path.canonicalize()?;
                 file_followers.insert(path, follower);
             }
         }
-        Self {
+        Ok(Self {
             root: abs_root,
             file_followers,
             event_handler,
-        }
+        })
     }
 
     pub fn handle_create_file(&mut self, path: PathBuf) {
